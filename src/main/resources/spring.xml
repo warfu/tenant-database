@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+                        http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+                        http://www.springframework.org/schema/context
+                        http://www.springframework.org/schema/context/spring-context-3.1.xsd
+ http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd">
+
+    <!-- 引入jdbc配置文件 -->
+    <context:property-placeholder location="classpath:data.properties" ignore-unresolvable="true"/>
+
+    <!-- 公共(默认)数据源 -->
+    <bean id="defaultDataSource" class="com.alibaba.druid.pool.DruidDataSource"
+          init-method="init" destroy-method="close">
+        <!-- 基本属性 url、user、password -->
+        <property name="url" value="${ds.jdbcUrl}" />
+        <property name="username" value="${ds.user}" />
+        <property name="password" value="${ds.password}" />
+
+        <!-- 配置初始化大小、最小、最大 -->
+        <property name="initialSize" value="5" />
+        <property name="minIdle" value="2" />
+        <property name="maxActive" value="10" />
+
+        <!-- 配置获取连接等待超时的时间，单位是毫秒 -->
+        <property name="maxWait" value="1000" />
+
+        <!-- 配置间隔多久才进行一次检测，检测需要关闭的空闲连接，单位是毫秒 -->
+        <property name="timeBetweenEvictionRunsMillis" value="5000" />
+
+        <!-- 配置一个连接在池中最小生存的时间，单位是毫秒 -->
+        <property name="minEvictableIdleTimeMillis" value="240000" />
+
+        <property name="validationQuery" value="SELECT 1" />
+        <!--单位：秒，检测连接是否有效的超时时间-->
+        <property name="validationQueryTimeout" value="60" />
+        <!--建议配置为true，不影响性能，并且保证安全性。申请连接的时候检测，如果空闲时间大于timeBetweenEvictionRunsMillis，执行validationQuery检测连接是否有效-->
+        <property name="testWhileIdle" value="true" />
+        <!--申请连接时执行validationQuery检测连接是否有效，做了这个配置会降低性能。-->
+        <property name="testOnBorrow" value="true" />
+        <!--归还连接时执行validationQuery检测连接是否有效，做了这个配置会降低性能。-->
+        <property name="testOnReturn" value="false" />
+
+        <!--Config Filter-->
+        <!-- 开启Druid的监控统计功能 -->
+        <property name="filters" value="config" />
+        <!-- 开启数据库密码解密-->
+        <property name="connectionProperties" value="config.decrypt=true;config.decrypt.key=${ds.publickey}" />
+    </bean>
+
+    <!-- 事务管理器 -->
+    <bean id="txManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="multipleDataSource"/>
+    </bean>
+
+    <!--多数据源-->
+    <bean id="multipleDataSource" class="com.mysoft.tenantdatabase.ds.DynamicDataSource">
+        <property name="defaultTargetDataSource" ref="defaultDataSource"/>
+        <property name="targetDataSources">
+            <map>
+                <entry key="defaultDataSource" value-ref="defaultDataSource"/>
+            </map>
+        </property>
+    </bean>
+
+    <!-- 注解事务管理器 -->
+    <!--这里的order值必须大于DynamicDataSourceAspectAdvice的order值-->
+     <tx:annotation-driven transaction-manager="txManager" order="2"/>
+
+    <!-- 创建SqlSessionFactory，同时指定数据源 -->
+      <bean id="mainSqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+           <property name="dataSource" ref="multipleDataSource"/>
+       </bean>
+
+    <!-- DAO接口所在包名，Spring会自动查找其下的DAO -->
+    <bean id="mainSqlMapper" class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+          <property name="sqlSessionFactoryBeanName" value="mainSqlSessionFactory"/>
+          <property name="basePackage" value="com.mysoft.tenantdatabase.mapper"/>
+      </bean>
+
+    <bean id="defaultSqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean" primary="true">
+        <property name="dataSource" ref="defaultDataSource"/>
+        <!-- 配置mybatis全局配置文件 -->
+        <property name="configLocation" value="classpath:mybatis.xml"/>
+    </bean>
+
+    <bean id="defaultSqlMapper" class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <property name="sqlSessionFactoryBeanName" value="defaultSqlSessionFactory"/>
+        <property name="basePackage" value="com.mysoft.tenantdatabase.dao"/>
+    </bean>
+</beans>
