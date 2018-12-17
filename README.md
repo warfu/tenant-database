@@ -3,6 +3,6 @@ dynamic database   mybatis  tenant  动态数据源（从数据库读取）切�
 
 sql 中是相应数据库脚本
 
-能在程序运行时动态切换
+能在程序运行时感觉 header 动态切换数据源
 
-durid 连接池
+ 连接池 采用 durid
