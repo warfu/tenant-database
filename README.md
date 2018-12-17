@@ -6,3 +6,6 @@ sql 中是相应数据库脚本
 能在程序运行时根据 http header 动态切换数据源
 
  连接池 采用 durid
+ 
+ 参考 ：
+ https://juejin.im/post/5a5e262d5188257328217036
